@@ -128,3 +128,85 @@ dataSource = module.get<DataSource>(DataSource);
 2. `npx jest <path>` MUST pass.
 
 Run both file-scoped before finishing the change.
+
+## 6. Access private members through a typed view, not `as any`
+
+`(service as any).privateMethod` / `(service as any).privateField` triggers a cascade of
+`no-unsafe-call` / `no-unsafe-member-access`. Declare a local type that exposes only the
+private members the test touches, then cast once with `as unknown as`.
+
+```ts
+// ✅ Good
+type LineServiceInternal = {
+  lineClient: { replyMessage: jest.Mock; pushMessage: jest.Mock };
+  handlePostback: (event: unknown) => Promise<void>;
+  safeReplyText: (replyToken: string | undefined, text: string) => Promise<void>;
+};
+
+const internal = service as unknown as LineServiceInternal;
+jest.spyOn(internal, 'handlePostback').mockResolvedValue(undefined);
+await internal.safeReplyText('rt1', 'msg'); // fully typed, no unsafe-call
+```
+
+```ts
+// ❌ Bad — every access is `any`
+jest.spyOn(service as any, 'handlePostback');
+await (service as any).safeReplyText('rt1', 'msg');
+```
+
+## 7. Retrieve values from a `jest.mock` factory with `jest.requireMock<T>()`
+
+Do NOT use `require(...)` (forbidden by `no-require-imports`) and do NOT leave the result
+`any`. Pass the expected shape as the generic argument so the value is typed.
+
+```ts
+// ✅ Good
+jest.mock('@google/generative-ai', () => {
+  const mockGenerateContent = jest.fn();
+  return {
+    GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+      getGenerativeModel: jest.fn().mockReturnValue({ generateContent: mockGenerateContent }),
+    })),
+    mockGenerateContent, // expose for the test
+  };
+});
+
+const { mockGenerateContent } = jest.requireMock<{ mockGenerateContent: jest.Mock }>(
+  '@google/generative-ai',
+);
+```
+
+```ts
+// ❌ Bad — require import forbidden + unsafe assignment
+const { mockGenerateContent } = require('@google/generative-ai');
+```
+
+## 8. Navigate untyped output with a small structural type
+
+When asserting against a deeply-nested object that the typings expose as a wide union
+(e.g. a LINE Flex bubble), declare a minimal structural interface and cast with
+`as unknown as`, instead of `as any` followed by member access.
+
+```ts
+// ✅ Good
+interface FlexNode {
+  type?: string;
+  text?: string;
+  action?: { data?: string };
+  header?: FlexNode;
+  footer?: FlexNode;
+  contents?: FlexNode[];
+}
+
+const bubble = flex.contents as unknown as FlexNode;
+expect(bubble.footer?.contents?.[0].action?.data).toBe('action=approve&id=rcpt_123');
+```
+
+For a partial mock return value, cast to the real type the same way:
+`mockReturnValue({ type: 'flex', altText: 'x' } as unknown as messagingApi.FlexMessage)`.
+
+## 9. Remove unused imports and `module.get` handles
+
+`no-unused-vars` fires on imports kept only "just in case" and on `module.get(...)` results
+never asserted against. Import a symbol only when used as a value (a DI token still counts);
+if a module is mocked purely by its string path in `jest.mock(...)`, do NOT import it.
