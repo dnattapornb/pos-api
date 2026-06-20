@@ -10,4 +10,4 @@ import { ReceiptModule } from '../receipt/receipt.module';
   providers: [LineService],
   exports: [LineService],
 })
-export class LineModule { }
+export class LineModule {}

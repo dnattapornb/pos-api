@@ -7,4 +7,4 @@ import { OcrService } from './ocr.service';
   providers: [OcrService],
   exports: [OcrService],
 })
-export class OcrModule { }
+export class OcrModule {}

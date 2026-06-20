@@ -7,12 +7,12 @@ import { ReceiptService } from './receipt.service';
 import { LineModule } from '../line/line.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Receipt, ReceiptItem]),
-        forwardRef(() => LineModule),
-    ],
-    controllers: [ReceiptController],
-    providers: [ReceiptService],
-    exports: [ReceiptService],
+  imports: [
+    TypeOrmModule.forFeature([Receipt, ReceiptItem]),
+    forwardRef(() => LineModule),
+  ],
+  controllers: [ReceiptController],
+  providers: [ReceiptService],
+  exports: [ReceiptService],
 })
-export class ReceiptModule { }
+export class ReceiptModule {}

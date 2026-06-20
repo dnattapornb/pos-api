@@ -1,21 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Receipt } from './receipt.entity';
 
 @Entity('receipt_item')
 export class ReceiptItem {
-    @PrimaryGeneratedColumn()
-    id!: number;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column()
-    name!: string;
+  @Column()
+  name!: string;
 
-    @Column({ type: 'int', default: 1 })
-    quantity!: number;
+  @Column({ type: 'int', default: 1 })
+  quantity!: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.00 })
-    price!: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.0 })
+  price!: number;
 
-    @ManyToOne(() => Receipt, (receipt) => receipt.items, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'receipt_id' })
-    receipt!: Receipt;
+  @ManyToOne(() => Receipt, (receipt) => receipt.items, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'receipt_id' })
+  receipt!: Receipt;
 }

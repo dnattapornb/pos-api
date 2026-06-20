@@ -30,7 +30,14 @@ import { InventoryTransaction } from './pos/entities/inventory-transaction.entit
         // Read/write DATETIME as UTC. Prevents the mysql2 driver from applying a
         // local (+07) offset, keeping timestamps consistent end-to-end.
         timezone: 'Z',
-        entities: [Receipt, ReceiptItem, Product, ProductUnit, Inventory, InventoryTransaction],
+        entities: [
+          Receipt,
+          ReceiptItem,
+          Product,
+          ProductUnit,
+          Inventory,
+          InventoryTransaction,
+        ],
         synchronize: true, // Only for development
       }),
     }),
@@ -43,4 +50,4 @@ import { InventoryTransaction } from './pos/entities/inventory-transaction.entit
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

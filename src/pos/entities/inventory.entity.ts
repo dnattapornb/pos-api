@@ -6,7 +6,9 @@ export class Inventory {
   @PrimaryColumn({ name: 'product_id' })
   productId: number;
 
-  @OneToOne(() => Product, (product) => product.inventory, { onDelete: 'CASCADE' })
+  @OneToOne(() => Product, (product) => product.inventory, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
