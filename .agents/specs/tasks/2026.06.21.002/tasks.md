@@ -24,10 +24,10 @@
 
 ## R2.2 — User API (Cashier/Admin)
 
-- [ ] สร้าง `users.controller.ts`, `users.service.ts`, `users.module.ts` พร้อม DTO `CreateUserDto`, `UpdateUserDto` (เชื่อม Module ใน app.module.ts)
-- [ ] เพิ่ม method ใน Service: `getAllUsers()`, `getUserById()`, `createUser()` (อาจใช้ bcrypt เข้ารหัสรหัสผ่าน หรือ hash พื้นฐาน), `updateUser()`
-- [ ] เพิ่ม endpoints ฝั่ง Controller: `/users/...`
-- [ ] เพิ่ม Unit Test `users.controller.spec.ts` และ `users.service.spec.ts`
+- [x] สร้าง `users.controller.ts`, `users.service.ts`, `users.module.ts` พร้อม DTO `CreateUserDto`, `UpdateUserDto` (เชื่อม Module ใน app.module.ts)
+- [x] เพิ่ม method ใน Service: `getAllUsers()`, `getUserById()`, `createUser()` (อาจใช้ bcrypt เข้ารหัสรหัสผ่าน หรือ hash พื้นฐาน), `updateUser()`
+- [x] เพิ่ม endpoints ฝั่ง Controller: `/users/...`
+- [x] เพิ่ม Unit Test `users.controller.spec.ts` และ `users.service.spec.ts`
 
 ## R2.3 — Supplier & Purchase Order API
 
