@@ -1,4 +1,4 @@
-### POS REST API — Product & Inventory
+### POS REST API — Full endpoint suite
 ### For VS Code "REST Client" extension (humao.rest-client).
 ### Click "Send Request" above each request. Edit @baseUrl if your PORT differs.
 ### Schema: .agents/specs/database.md  |  Docs: .agents/references/pos-api.md
@@ -7,7 +7,37 @@
 @contentType = application/json
 
 ###############################################################################
-# Products
+# Categories  (/pos/category, /pos/categories)
+###############################################################################
+
+### List all categories
+GET {{baseUrl}}/pos/categories
+
+### Get one category by id
+GET {{baseUrl}}/pos/category/1
+
+### Create a category
+# @name createCategory
+POST {{baseUrl}}/pos/category
+Content-Type: {{contentType}}
+
+{
+  "name": "เครื่องดื่ม"
+}
+
+### Update a category (partial)
+PUT {{baseUrl}}/pos/category/1
+Content-Type: {{contentType}}
+
+{
+  "name": "เครื่องดื่ม & น้ำ"
+}
+
+### Delete a category (fails with 400 if it still has products)
+DELETE {{baseUrl}}/pos/category/1
+
+###############################################################################
+# Products  (/pos/product, /pos/products)
 ###############################################################################
 
 ### Seed sample data (DESTRUCTIVE: truncates POS tables, dev only)
@@ -20,7 +50,7 @@ GET {{baseUrl}}/pos/products
 ### Get one product by id
 GET {{baseUrl}}/pos/product/1
 
-### Create a product with units
+### Create a product with units (categoryId optional)
 # @name createProduct
 POST {{baseUrl}}/pos/product
 Content-Type: {{contentType}}
@@ -30,6 +60,7 @@ Content-Type: {{contentType}}
   "name": "ขนมปังโฮลวีท",
   "baseUnitName": "PIECE",
   "costPrice": 18.5,
+  "categoryId": 1,
   "units": [
     { "barcode": "8851000", "unitName": "PIECE", "multiplier": 1, "retailPrice": 25, "wholesalePrice": 22 },
     { "barcode": "8851001", "unitName": "PACK", "multiplier": 6, "retailPrice": 140, "wholesalePrice": 130 }
@@ -45,7 +76,15 @@ Content-Type: {{contentType}}
   "costPrice": 13
 }
 
-### Update product — replace the entire unit list (delete + recreate)
+### Update product — assign / change category
+PUT {{baseUrl}}/pos/product/1
+Content-Type: {{contentType}}
+
+{
+  "categoryId": 2
+}
+
+### Update product — upsert units by barcode (existing updated, new created)
 PUT {{baseUrl}}/pos/product/1
 Content-Type: {{contentType}}
 
@@ -131,19 +170,78 @@ Content-Type: {{contentType}}
 }
 
 ###############################################################################
-# Inventory
+# Suppliers  (/pos/supplier, /pos/suppliers)
 ###############################################################################
 
-### Receive goods (stock IN) — qty * multiplier added to base units
-POST {{baseUrl}}/pos/inventory/receive
+### List all suppliers
+GET {{baseUrl}}/pos/suppliers
+
+### Get one supplier by id
+GET {{baseUrl}}/pos/supplier/1
+
+### Create a supplier
+# @name createSupplier
+POST {{baseUrl}}/pos/supplier
 Content-Type: {{contentType}}
 
 {
-  "barcode": "8850003",
-  "qty": 2
+  "name": "บริษัท เครื่องดื่มไทย จำกัด",
+  "contactInfo": "02-123-4567"
 }
 
-### Checkout (stock OUT) — runs in one transaction
+### Update a supplier (partial)
+PUT {{baseUrl}}/pos/supplier/1
+Content-Type: {{contentType}}
+
+{
+  "contactInfo": "02-999-0000"
+}
+
+### Delete a supplier
+DELETE {{baseUrl}}/pos/supplier/1
+
+###############################################################################
+# Purchase orders (stock IN)  (/pos/purchase-order)
+###############################################################################
+
+### Create a purchase order — qty * multiplier added to base units, status COMPLETED
+### supplierId optional; costPrice per item optional (falls back to product.costPrice)
+POST {{baseUrl}}/pos/purchase-order
+Content-Type: {{contentType}}
+
+{
+  "supplierId": 1,
+  "items": [
+    { "barcode": "8850003", "qty": 2, "costPrice": 11.5 },
+    { "barcode": "8850006", "qty": 1 }
+  ]
+}
+
+### Purchase order without supplier (walk-in / cash purchase)
+POST {{baseUrl}}/pos/purchase-order
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "8850007", "qty": 3 }
+  ]
+}
+
+### Purchase order with unknown barcode -> 400
+POST {{baseUrl}}/pos/purchase-order
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "0000000", "qty": 1 }
+  ]
+}
+
+###############################################################################
+# Orders & Checkout (stock OUT)  (/pos/checkout, /pos/orders, /pos/order/:id)
+###############################################################################
+
+### Checkout (stock OUT) — creates Order + OrderItems in one transaction
 POST {{baseUrl}}/pos/checkout
 Content-Type: {{contentType}}
 
@@ -152,10 +250,13 @@ Content-Type: {{contentType}}
     { "barcode": "8850001", "qty": 3 },
     { "barcode": "8850004", "qty": 5 }
   ],
+  "paymentMethod": "CASH",
+  "discountAmount": 10,
+  "cashierId": 1,
   "referenceId": "POS-TERMINAL-1-0001"
 }
 
-### Checkout without referenceId (server generates ORDER-<timestamp>)
+### Checkout minimal — defaults paymentMethod=CASH, discount=0, orderNo=ORDER-<timestamp>
 POST {{baseUrl}}/pos/checkout
 Content-Type: {{contentType}}
 
@@ -165,7 +266,18 @@ Content-Type: {{contentType}}
   ]
 }
 
-### Checkout unknown barcode -> 400
+### Checkout with PromptPay
+POST {{baseUrl}}/pos/checkout
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "8850010", "qty": 2 }
+  ],
+  "paymentMethod": "PROMPTPAY"
+}
+
+### Checkout unknown barcode -> 400 (whole order rolled back)
 POST {{baseUrl}}/pos/checkout
 Content-Type: {{contentType}}
 
@@ -173,4 +285,69 @@ Content-Type: {{contentType}}
   "items": [
     { "barcode": "0000000", "qty": 1 }
   ]
+}
+
+### Checkout discount exceeds total -> 400
+POST {{baseUrl}}/pos/checkout
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "8850001", "qty": 1 }
+  ],
+  "discountAmount": 99999
+}
+
+### List all orders (newest first, with items)
+GET {{baseUrl}}/pos/orders
+
+### Get one order by id (items + productUnit.product + cashier)
+GET {{baseUrl}}/pos/order/1
+
+###############################################################################
+# Users  (/user, /users)  — passwordHash is never returned
+###############################################################################
+
+### List all users
+GET {{baseUrl}}/users
+
+### Get one user by id
+GET {{baseUrl}}/user/1
+
+### Create a user (role optional, defaults per entity; password min length 6)
+# @name createUser
+POST {{baseUrl}}/user
+Content-Type: {{contentType}}
+
+{
+  "username": "cashier01",
+  "password": "secret123",
+  "role": "CASHIER"
+}
+
+### Create an admin user
+POST {{baseUrl}}/user
+Content-Type: {{contentType}}
+
+{
+  "username": "admin01",
+  "password": "secret123",
+  "role": "ADMIN"
+}
+
+### Update a user (partial — change role / reset password)
+PUT {{baseUrl}}/user/1
+Content-Type: {{contentType}}
+
+{
+  "role": "ADMIN"
+}
+
+### Create user with short password -> 400
+POST {{baseUrl}}/user
+Content-Type: {{contentType}}
+
+{
+  "username": "weak",
+  "password": "123"
 }
