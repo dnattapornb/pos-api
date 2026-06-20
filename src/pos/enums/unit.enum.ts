@@ -1,4 +1,4 @@
-export enum RetailUnit {
+export enum UnitName {
   PIECE = 'PIECE',       // ชิ้น/อัน
   SACHET = 'SACHET',     // ซอง
   BOTTLE = 'BOTTLE',     // ขวด

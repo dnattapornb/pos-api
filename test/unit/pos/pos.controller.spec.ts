@@ -14,6 +14,10 @@ describe('PosController', () => {
           provide: PosService,
           useValue: {
             getAllProducts: jest.fn().mockResolvedValue([]),
+            getProductById: jest.fn().mockResolvedValue({ id: 1 }),
+            createProduct: jest.fn().mockResolvedValue({ id: 1 }),
+            updateProduct: jest.fn().mockResolvedValue({ id: 1 }),
+            deleteProduct: jest.fn().mockResolvedValue({ message: 'Deleted' }),
             seedProducts: jest.fn().mockResolvedValue({ message: 'Seeded' }),
             receiveGoods: jest.fn().mockResolvedValue({ message: 'Received' }),
             checkout: jest.fn().mockResolvedValue({ message: 'Checkout' }),
@@ -34,6 +38,30 @@ describe('PosController', () => {
     const res = await controller.getAllProducts();
     expect(service.getAllProducts).toHaveBeenCalled();
     expect(res).toEqual([]);
+  });
+
+  it('should call getProductById', async () => {
+    const res = await controller.getProductById(1);
+    expect(service.getProductById).toHaveBeenCalledWith(1);
+    expect(res).toEqual({ id: 1 });
+  });
+
+  it('should call createProduct', async () => {
+    const res = await controller.createProduct({ sku: '123' } as any);
+    expect(service.createProduct).toHaveBeenCalledWith({ sku: '123' });
+    expect(res).toEqual({ id: 1 });
+  });
+
+  it('should call updateProduct', async () => {
+    const res = await controller.updateProduct(1, { name: 'test' });
+    expect(service.updateProduct).toHaveBeenCalledWith(1, { name: 'test' });
+    expect(res).toEqual({ id: 1 });
+  });
+
+  it('should call deleteProduct', async () => {
+    const res = await controller.deleteProduct(1);
+    expect(service.deleteProduct).toHaveBeenCalledWith(1);
+    expect(res).toEqual({ message: 'Deleted' });
   });
 
   it('should call seedProducts', async () => {

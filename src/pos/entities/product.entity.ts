@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, OneToOne } from 'typeorm';
-import { RetailUnit } from '../enums/unit.enum';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, OneToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { UnitName } from '../enums/unit.enum';
 import { ProductUnit } from './product-unit.entity';
 import { Inventory } from './inventory.entity';
 
@@ -14,8 +14,8 @@ export class Product {
   @Column()
   name: string;
 
-  @Column({ name: 'base_unit_name', type: 'enum', enum: RetailUnit })
-  baseUnitName: RetailUnit;
+  @Column({ name: 'base_unit_name', type: 'enum', enum: UnitName })
+  baseUnitName: UnitName;
 
   @Column('decimal', { name: 'cost_price', precision: 10, scale: 2, default: 0 })
   costPrice: number;
@@ -25,4 +25,13 @@ export class Product {
 
   @OneToOne(() => Inventory, (inventory) => inventory.product, { cascade: true })
   inventory: Inventory;
+
+  @Column({ default: true })
+  published: boolean;
+
+  @CreateDateColumn({ name: 'created_at', type: 'datetime', precision: 6 })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'datetime', precision: 6 })
+  updatedAt: Date;
 }
