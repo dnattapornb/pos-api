@@ -4,7 +4,7 @@
 
 ## 1. Project Context
 
-- **Project:** LINE Receipt OCR API (`line-receipt-ocr-api`)
+- **Project:** LINE Receipt OCR API (`pos-api`)
 - **Purpose:** A NestJS REST API acting as a LINE Webhook Receiver to process receipt images sent by users via LINE Chat, extract data using OCR and AI, and reply with an interactive Flex Message.
 - **Tech Stack:** Node.js 22+, NestJS 11 (TypeScript Strict), Google Cloud Vision API (`@google-cloud/vision`), Google Gemini 2.0 Flash (`@google/generative-ai`), LINE Messaging API v3 (`@line/bot-sdk`), MySQL 8 (TypeORM), Redis.
 
@@ -26,7 +26,7 @@ Do not guess. Read the specific file when doing related work:
 - **POS REST API (Product & Inventory endpoints, curl/test):** `.agents/references/pos-api.md`
 - **Naming Conventions:** `.agents/references/naming-conventions.md`
 - **Git Commit Rules:** `.agents/skills/git-conventional-commit-message/SKILL.md`
-- **Frontend Integration:** `../liff-receipt-frontend/MASTER_AGENT_PROMPT.md`
+- **Frontend Integration:** `../pos-ui/MASTER_AGENT_PROMPT.md`
 - **Current Tasks:** ALWAYS check the latest dated folder under `.agents/specs/tasks/*/tasks.md` for the active phase.
 
 ## 4. Repository Gotchas
