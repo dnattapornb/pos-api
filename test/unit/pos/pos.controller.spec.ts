@@ -18,6 +18,9 @@ describe('PosController', () => {
             createProduct: jest.fn().mockResolvedValue({ id: 1 }),
             updateProduct: jest.fn().mockResolvedValue({ id: 1 }),
             deleteProduct: jest.fn().mockResolvedValue({ message: 'Deleted' }),
+            deleteProductUnit: jest
+              .fn()
+              .mockResolvedValue({ message: 'Unit deleted' }),
             seedProducts: jest.fn().mockResolvedValue({ message: 'Seeded' }),
             receiveGoods: jest.fn().mockResolvedValue({ message: 'Received' }),
             checkout: jest.fn().mockResolvedValue({ message: 'Checkout' }),
@@ -62,6 +65,12 @@ describe('PosController', () => {
     const res = await controller.deleteProduct(1);
     expect(service.deleteProduct).toHaveBeenCalledWith(1);
     expect(res).toEqual({ message: 'Deleted' });
+  });
+
+  it('should call deleteProductUnit', async () => {
+    const res = await controller.deleteProductUnit('8850001');
+    expect(service.deleteProductUnit).toHaveBeenCalledWith('8850001');
+    expect(res).toEqual({ message: 'Unit deleted' });
   });
 
   it('should call seedProducts', async () => {

@@ -29,8 +29,9 @@ BASE="http://localhost:3000"
 | GET | `/pos/products` | List all published products (with units + inventory) | — |
 | GET | `/pos/product/:id` | Get one product by id | — |
 | POST | `/pos/product` | Create a product with units | `CreateProductDto` |
-| PUT | `/pos/product/:id` | Update a product (partial) | `UpdateProductDto` |
+| PUT | `/pos/product/:id` | Update a product (partial, upsert units by barcode) | `UpdateProductDto` |
 | DELETE | `/pos/product/:id` | Soft-delete a product | — |
+| DELETE | `/pos/unit/:barcode` | Soft-delete a single product unit | — |
 | POST | `/pos/seed` | Wipe + seed 5 sample products | — |
 | POST | `/pos/inventory/receive` | Receive stock by barcode | `ReceiveGoodsDto` |
 | POST | `/pos/checkout` | Deduct stock for a sale | `CheckoutDto` |
@@ -131,7 +132,10 @@ Example **400** (invalid enum + empty units):
 
 `PUT /pos/product/:id` — body `UpdateProductDto`. All fields optional, but when present must pass the same rules as create. Adds `published?: boolean`.
 
-> Note: when `units` is provided, the service **replaces all existing units** for that product (delete + recreate).
+> **Units are upserted by `barcode`** (not wiped and recreated):
+> - A unit whose `barcode` already exists on the product is **updated in place** — its `id` and `createdAt` are preserved. If it was previously soft-deleted, it is **re-published** (`published = true`).
+> - A unit with a new `barcode` is **created**.
+> - Existing units that are **not** in the payload are **left untouched** (not deleted). To remove a unit, use `DELETE /pos/unit/:barcode`.
 
 ```bash
 # Update name and price only
@@ -139,7 +143,8 @@ curl -s -X PUT "$BASE/pos/product/1" \
   -H "Content-Type: application/json" \
   -d '{ "name": "น้ำอัดลม (สูตรใหม่)", "costPrice": 13 }'
 
-# Replace the unit list
+# Upsert units: 8850001 is updated in place, a new barcode is created,
+# any other existing unit is left as-is
 curl -s -X PUT "$BASE/pos/product/1" \
   -H "Content-Type: application/json" \
   -d '{
@@ -166,6 +171,20 @@ Response:
 
 ```json
 { "message": "Product 1 has been deleted" }
+```
+
+### Delete product unit (soft delete)
+
+`DELETE /pos/unit/:barcode` — sets `published = false` on the single `product_unit` matched by `barcode`. The row is retained, so the same `barcode` is re-published automatically if it is sent again via `PUT /pos/product/:id`. Unknown barcode → **400** `"Product unit not found"`.
+
+```bash
+curl -s -X DELETE "$BASE/pos/unit/8850001"
+```
+
+Response:
+
+```json
+{ "message": "Product unit 8850001 has been deleted" }
 ```
 
 ### Seed sample data

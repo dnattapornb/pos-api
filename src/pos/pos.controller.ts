@@ -1,6 +1,20 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { PosService } from './pos.service';
-import { ReceiveGoodsDto, CheckoutDto, CreateProductDto, UpdateProductDto } from './dto/pos.dto';
+import {
+  ReceiveGoodsDto,
+  CheckoutDto,
+  CreateProductDto,
+  UpdateProductDto,
+} from './dto/pos.dto';
 
 @Controller('pos')
 export class PosController {
@@ -22,13 +36,21 @@ export class PosController {
   }
 
   @Put('product/:id')
-  async updateProduct(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
+  async updateProduct(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateProductDto,
+  ) {
     return this.posService.updateProduct(id, dto);
   }
 
   @Delete('product/:id')
   async deleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.posService.deleteProduct(id);
+  }
+
+  @Delete('unit/:barcode')
+  async deleteProductUnit(@Param('barcode') barcode: string) {
+    return this.posService.deleteProductUnit(barcode);
   }
 
   @Post('seed')

@@ -79,6 +79,12 @@ Source: `src/pos/entities/product-unit.entity.ts`
 A single product maps to multiple barcodes/units. All stock math converts a unit
 qty to base units using `qty * multiplier`.
 
+On `PUT /pos/product/:id`, units are **upserted by `barcode`**: an existing
+barcode is updated in place (preserving `id` / `created_at`, and re-publishing if
+it was soft-deleted), a new barcode is inserted, and units not in the payload are
+left untouched. Deleting a unit is a **soft delete** (`published = false`) via
+`DELETE /pos/unit/:barcode`.
+
 ### Table `inventory`
 
 Source: `src/pos/entities/inventory.entity.ts`

@@ -111,21 +111,33 @@ export class PosService {
 
       await queryRunner.manager.save(product);
 
-      // Update Units
+      // Upsert Units by barcode (no deletion of units missing from payload)
       if (dto.units) {
-        // Delete old units that are not in the new list (Optional strategy: wipe and recreate)
-        await queryRunner.manager.delete(ProductUnit, { product: { id } });
-        
+        const existingByBarcode = new Map(
+          (product.units ?? []).map((unit) => [unit.barcode, unit]),
+        );
+
         for (const unitDto of dto.units) {
-          const unit = this.unitRepo.create({
-            product,
-            barcode: unitDto.barcode,
-            unitName: unitDto.unitName,
-            multiplier: unitDto.multiplier,
-            retailPrice: unitDto.retailPrice,
-            wholesalePrice: unitDto.wholesalePrice,
-          });
-          await queryRunner.manager.save(unit);
+          const existing = existingByBarcode.get(unitDto.barcode);
+          if (existing) {
+            // Update in place — keep id / createdAt, re-publish if previously soft-deleted
+            existing.unitName = unitDto.unitName;
+            existing.multiplier = unitDto.multiplier;
+            existing.retailPrice = unitDto.retailPrice;
+            existing.wholesalePrice = unitDto.wholesalePrice;
+            existing.published = true;
+            await queryRunner.manager.save(existing);
+          } else {
+            const unit = this.unitRepo.create({
+              product,
+              barcode: unitDto.barcode,
+              unitName: unitDto.unitName,
+              multiplier: unitDto.multiplier,
+              retailPrice: unitDto.retailPrice,
+              wholesalePrice: unitDto.wholesalePrice,
+            });
+            await queryRunner.manager.save(unit);
+          }
         }
       }
 
@@ -160,6 +172,19 @@ export class PosService {
 
     this.logger.log(`Soft deleted product ${id}`);
     return { message: `Product ${id} has been deleted` };
+  }
+
+  async deleteProductUnit(barcode: string) {
+    const unit = await this.unitRepo.findOne({ where: { barcode } });
+    if (!unit) {
+      throw new BadRequestException('Product unit not found');
+    }
+
+    unit.published = false;
+    await this.unitRepo.save(unit);
+
+    this.logger.log(`Soft deleted product unit ${barcode}`);
+    return { message: `Product unit ${barcode} has been deleted` };
   }
 
   async seedProducts() {
