@@ -30,7 +30,9 @@ describe('PosController', () => {
       createPurchaseOrder: jest
         .fn()
         .mockResolvedValue({ message: 'PO Created' }),
-      checkout: jest.fn().mockResolvedValue({ message: 'Checkout' }),
+      checkout: jest.fn().mockResolvedValue({ id: 1, orderNo: 'ORDER-1' }),
+      getOrders: jest.fn().mockResolvedValue([]),
+      getOrderById: jest.fn().mockResolvedValue({ id: 1, orderNo: 'ORDER-1' }),
       getAllCategories: jest.fn().mockResolvedValue([]),
       getCategoryById: jest.fn().mockResolvedValue({ id: 1, name: 'Cat' }),
       createCategory: jest.fn().mockResolvedValue({ id: 1, name: 'Cat' }),
@@ -156,7 +158,19 @@ describe('PosController', () => {
     const dto = { items: [{ barcode: '123', qty: 1 }] };
     const res = await controller.checkout(dto);
     expect(service.checkout).toHaveBeenCalledWith(dto);
-    expect(res).toEqual({ message: 'Checkout' });
+    expect(res).toEqual({ id: 1, orderNo: 'ORDER-1' });
+  });
+
+  it('should call getOrders', async () => {
+    const res = await controller.getOrders();
+    expect(service.getOrders).toHaveBeenCalled();
+    expect(res).toEqual([]);
+  });
+
+  it('should call getOrderById', async () => {
+    const res = await controller.getOrderById(1);
+    expect(service.getOrderById).toHaveBeenCalledWith(1);
+    expect(res).toEqual({ id: 1, orderNo: 'ORDER-1' });
   });
 
   it('should call getAllCategories', async () => {

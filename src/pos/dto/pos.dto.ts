@@ -13,6 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UnitName } from '../enums/unit.enum';
+import { PaymentMethod } from '../enums/payment-method.enum';
 
 export class CreateCategoryDto {
   @IsString()
@@ -214,6 +215,20 @@ export class CheckoutDto {
   @ValidateNested({ each: true })
   @Type(() => CheckoutItemDto)
   items: CheckoutItemDto[];
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  discountAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  cashierId?: number;
 
   @IsOptional()
   @IsString()

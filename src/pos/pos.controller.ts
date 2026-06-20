@@ -143,6 +143,16 @@ export class PosController {
     return this.posService.seedProducts();
   }
 
+  @Get('orders')
+  async getOrders() {
+    return this.posService.getOrders();
+  }
+
+  @Get('order/:id')
+  async getOrderById(@Param('id', ParseIntPipe) id: number) {
+    return this.posService.getOrderById(id);
+  }
+
   @Post('checkout')
   checkout(@Body() dto: CheckoutDto) {
     return this.posService.checkout(dto);

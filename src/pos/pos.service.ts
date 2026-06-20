@@ -12,6 +12,10 @@ import {
 import { Supplier } from './entities/supplier.entity';
 import { PurchaseOrder } from './entities/purchase-order.entity';
 import { PurchaseOrderStatus } from './enums/purchase-order-status.enum';
+import { Order } from './entities/order.entity';
+import { OrderItem } from './entities/order-item.entity';
+import { PaymentMethod } from './enums/payment-method.enum';
+import { OrderStatus } from './enums/order-status.enum';
 import {
   CheckoutDto,
   CreateProductDto,
@@ -43,6 +47,8 @@ export class PosService {
     private readonly supplierRepo: Repository<Supplier>,
     @InjectRepository(PurchaseOrder)
     private readonly poRepo: Repository<PurchaseOrder>,
+    @InjectRepository(Order)
+    private readonly orderRepo: Repository<Order>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -712,6 +718,20 @@ export class PosService {
     await queryRunner.startTransaction();
 
     try {
+      // 1. Create the Order header first so items can reference it
+      const order = new Order();
+      order.orderNo = referenceId;
+      order.paymentMethod = dto.paymentMethod ?? PaymentMethod.CASH;
+      order.paymentStatus = OrderStatus.COMPLETED;
+      order.discountAmount = dto.discountAmount ?? 0;
+      if (dto.cashierId !== undefined) {
+        order.cashierId = dto.cashierId;
+      }
+      await queryRunner.manager.save(order);
+
+      let totalAmount = 0;
+
+      // 2. Process each line item: price, stock lock, deduct, ledger
       for (const item of dto.items) {
         const unit = await queryRunner.manager.findOne(ProductUnit, {
           where: { barcode: item.barcode },
@@ -740,6 +760,20 @@ export class PosService {
         inventory.qtyInBaseUnit -= qtyToDeduct;
         await queryRunner.manager.save(inventory);
 
+        // Price calculation (retailPrice -> unitPrice -> subtotal)
+        const unitPrice = Number(unit.retailPrice);
+        const subtotal = unitPrice * item.qty;
+        totalAmount += subtotal;
+
+        // Create order item
+        const orderItem = new OrderItem();
+        orderItem.order = order;
+        orderItem.productUnit = unit;
+        orderItem.qty = item.qty;
+        orderItem.unitPrice = unitPrice;
+        orderItem.subtotal = subtotal;
+        await queryRunner.manager.save(orderItem);
+
         // Record transaction
         const transaction = new InventoryTransaction();
         transaction.product = unit.product;
@@ -749,8 +783,20 @@ export class PosService {
         await queryRunner.manager.save(transaction);
       }
 
+      // 3. Finalize order totals
+      const discountAmount = Number(order.discountAmount);
+      if (discountAmount > totalAmount) {
+        throw new BadRequestException(
+          'Discount amount cannot exceed total amount',
+        );
+      }
+      order.totalAmount = totalAmount;
+      order.netAmount = totalAmount - discountAmount;
+      await queryRunner.manager.save(order);
+
       await queryRunner.commitTransaction();
-      return { message: 'Checkout successful', referenceId };
+      this.logger.log(`Checkout successful ${referenceId}`);
+      return this.getOrderById(order.id);
     } catch (err) {
       await queryRunner.rollbackTransaction();
       this.logger.error(`Checkout failed: ${(err as Error).message}`);
@@ -758,5 +804,26 @@ export class PosService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async getOrders() {
+    return this.orderRepo.find({
+      relations: { items: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getOrderById(id: number) {
+    const order = await this.orderRepo.findOne({
+      where: { id },
+      relations: {
+        items: { productUnit: { product: true } },
+        cashier: true,
+      },
+    });
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+    return order;
   }
 }

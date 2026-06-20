@@ -7,8 +7,10 @@ import { Inventory } from '../../../src/pos/entities/inventory.entity';
 import { Category } from '../../../src/pos/entities/category.entity';
 import { Supplier } from '../../../src/pos/entities/supplier.entity';
 import { PurchaseOrder } from '../../../src/pos/entities/purchase-order.entity';
+import { Order } from '../../../src/pos/entities/order.entity';
 import { DataSource } from 'typeorm';
 import { UnitName } from '../../../src/pos/enums/unit.enum';
+import { PaymentMethod } from '../../../src/pos/enums/payment-method.enum';
 
 describe('PosService', () => {
   let service: PosService;
@@ -43,6 +45,7 @@ describe('PosService', () => {
     save: jest.Mock;
     remove: jest.Mock;
   };
+  let orderRepo: { find: jest.Mock; findOne: jest.Mock };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -110,6 +113,14 @@ describe('PosService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Order),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
           provide: DataSource,
           useValue: {
             createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
@@ -123,6 +134,7 @@ describe('PosService', () => {
     productRepo = module.get(getRepositoryToken(Product));
     categoryRepo = module.get(getRepositoryToken(Category));
     supplierRepo = module.get(getRepositoryToken(Supplier));
+    orderRepo = module.get(getRepositoryToken(Order));
   });
 
   afterEach(() => {
@@ -393,7 +405,7 @@ describe('PosService', () => {
 
     it('createCategory should create and return category', async () => {
       categoryRepo.create.mockReturnValue({ name: 'Cat' });
-      categoryRepo.save.mockImplementation((obj: any) => {
+      categoryRepo.save.mockImplementation((obj: { id?: number }) => {
         obj.id = 1;
         return Promise.resolve(obj);
       });
@@ -449,7 +461,7 @@ describe('PosService', () => {
 
     it('createSupplier should create and return supplier', async () => {
       supplierRepo.create.mockReturnValue({ name: 'Supplier A' });
-      supplierRepo.save.mockImplementation((obj: any) => {
+      supplierRepo.save.mockImplementation((obj: { id?: number }) => {
         obj.id = 1;
         return Promise.resolve(obj);
       });
@@ -505,6 +517,180 @@ describe('PosService', () => {
         'Barcode 123 not found',
       );
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('checkout', () => {
+    it('creates an order with items, deducts stock, and commits', async () => {
+      const product = { id: 1, name: 'Coke' };
+      const unit = {
+        id: 10,
+        barcode: '8850001',
+        multiplier: 1,
+        retailPrice: 15,
+        product,
+      };
+      const inventory = { productId: 1, qtyInBaseUnit: 48 };
+
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(unit) // product unit lookup
+        .mockResolvedValueOnce(inventory); // inventory lock
+
+      // Assign an id to the order header when it is first saved
+      mockQueryRunner.manager.save.mockImplementation(
+        (entity: Record<string, unknown>) => {
+          if ('orderNo' in entity && entity.id === undefined) {
+            entity.id = 100;
+          }
+          return Promise.resolve(entity);
+        },
+      );
+
+      const savedOrder = {
+        id: 100,
+        orderNo: 'POS-1',
+        totalAmount: 45,
+        discountAmount: 0,
+        netAmount: 45,
+        paymentMethod: PaymentMethod.CASH,
+        items: [],
+      };
+      orderRepo.findOne.mockResolvedValueOnce(savedOrder);
+
+      const res = await service.checkout({
+        items: [{ barcode: '8850001', qty: 3 }],
+        referenceId: 'POS-1',
+      });
+
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      // stock deducted by qty * multiplier
+      expect(inventory.qtyInBaseUnit).toBe(45);
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+      expect(orderRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 100 },
+        relations: {
+          items: { productUnit: { product: true } },
+          cashier: true,
+        },
+      });
+      expect(res).toBe(savedOrder);
+    });
+
+    it('defaults paymentMethod to CASH and applies discount to netAmount', async () => {
+      const product = { id: 1, name: 'Coke' };
+      const unit = {
+        id: 10,
+        barcode: '8850001',
+        multiplier: 1,
+        retailPrice: 15,
+        product,
+      };
+      const inventory = { productId: 1, qtyInBaseUnit: 48 };
+
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(unit)
+        .mockResolvedValueOnce(inventory);
+      orderRepo.findOne.mockResolvedValueOnce({ id: 101 });
+
+      // Capture the order entity saved (first save call is the order header)
+      await service.checkout({
+        items: [{ barcode: '8850001', qty: 2 }],
+        discountAmount: 5,
+      });
+
+      const savedOrder = mockQueryRunner.manager.save.mock.calls
+        .map((call: unknown[]) => call[0] as Record<string, unknown>)
+        .find((arg) => 'orderNo' in arg);
+
+      expect(savedOrder).toBeDefined();
+      expect(savedOrder?.paymentMethod).toBe(PaymentMethod.CASH);
+      expect(savedOrder?.totalAmount).toBe(30); // 15 * 2
+      expect(savedOrder?.netAmount).toBe(25); // 30 - 5
+    });
+
+    it('rolls back and throws when stock is insufficient', async () => {
+      const product = { id: 1, name: 'Coke' };
+      const unit = {
+        id: 10,
+        barcode: '8850001',
+        multiplier: 1,
+        retailPrice: 15,
+        product,
+      };
+
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(unit)
+        .mockResolvedValueOnce({ productId: 1, qtyInBaseUnit: 1 });
+
+      await expect(
+        service.checkout({ items: [{ barcode: '8850001', qty: 3 }] }),
+      ).rejects.toThrow('Insufficient stock');
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('rolls back and throws when a barcode is not found', async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.checkout({ items: [{ barcode: '0000000', qty: 1 }] }),
+      ).rejects.toThrow('Barcode 0000000 not found');
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('rolls back and throws when discount exceeds total', async () => {
+      const product = { id: 1, name: 'Coke' };
+      const unit = {
+        id: 10,
+        barcode: '8850001',
+        multiplier: 1,
+        retailPrice: 15,
+        product,
+      };
+
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(unit)
+        .mockResolvedValueOnce({ productId: 1, qtyInBaseUnit: 48 });
+
+      await expect(
+        service.checkout({
+          items: [{ barcode: '8850001', qty: 1 }],
+          discountAmount: 100,
+        }),
+      ).rejects.toThrow('Discount amount cannot exceed total amount');
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('Orders', () => {
+    it('getOrders should return orders with items relation', async () => {
+      const orders = [{ id: 1, orderNo: 'ORDER-1', items: [] }];
+      orderRepo.find.mockResolvedValueOnce(orders);
+
+      const res = await service.getOrders();
+
+      expect(orderRepo.find).toHaveBeenCalledWith({
+        relations: { items: true },
+        order: { createdAt: 'DESC' },
+      });
+      expect(res).toBe(orders);
+    });
+
+    it('getOrderById should return the order when found', async () => {
+      const order = { id: 1, orderNo: 'ORDER-1', items: [] };
+      orderRepo.findOne.mockResolvedValueOnce(order);
+
+      const res = await service.getOrderById(1);
+
+      expect(res).toBe(order);
+    });
+
+    it('getOrderById should throw when not found', async () => {
+      orderRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(service.getOrderById(999)).rejects.toThrow(
+        'Order not found',
+      );
     });
   });
 });

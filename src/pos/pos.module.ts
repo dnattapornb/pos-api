@@ -8,6 +8,8 @@ import { Inventory } from './entities/inventory.entity';
 import { InventoryTransaction } from './entities/inventory-transaction.entity';
 import { Supplier } from './entities/supplier.entity';
 import { PurchaseOrder } from './entities/purchase-order.entity';
+import { Order } from './entities/order.entity';
+import { OrderItem } from './entities/order-item.entity';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { PurchaseOrder } from './entities/purchase-order.entity';
       InventoryTransaction,
       Supplier,
       PurchaseOrder,
+      Order,
+      OrderItem,
     ]),
   ],
   controllers: [PosController],

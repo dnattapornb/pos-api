@@ -38,14 +38,14 @@
 
 ## R2.4 — Order API & Checkout Refactor
 
-- [ ] ปรับปรุง `CheckoutDto` ให้มี `paymentMethod`, `discountAmount`, `cashierId`
-- [ ] แก้ไข method `checkout()` ใน `PosService` ให้ครอบคลุมการ:
+- [x] ปรับปรุง `CheckoutDto` ให้มี `paymentMethod`, `discountAmount`, `cashierId`
+- [x] แก้ไข method `checkout()` ใน `PosService` ให้ครอบคลุมการ:
   - คำนวณราคาสินค้าจาก `retailPrice` เป็น `unitPrice` และ `subtotal`
   - สร้าง `Order` (คำนวณ `totalAmount`, `netAmount`)
   - สร้าง `OrderItem` ของแต่ละรายการ
   - ล็อกสต็อกและบันทึก Inventory และ Transaction `OUT` (ทั้งหมดนี้ต้องอยู่ภายใต้ DB Transaction เดียวกัน)
-- [ ] เพิ่ม method `getOrders()`, `getOrderById()` พร้อมสร้าง Endpoints ที่เกี่ยวข้อง
-- [ ] อัปเดตและเพิ่ม Unit Test สำหรับ `checkout()` แบบใหม่
+- [x] เพิ่ม method `getOrders()`, `getOrderById()` พร้อมสร้าง Endpoints ที่เกี่ยวข้อง
+- [x] อัปเดตและเพิ่ม Unit Test สำหรับ `checkout()` แบบใหม่
 
 ## R2.5 — Documentation & HTTP Client
 
