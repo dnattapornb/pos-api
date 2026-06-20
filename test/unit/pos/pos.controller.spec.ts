@@ -1,39 +1,47 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PosController } from '../../../src/pos/pos.controller';
 import { PosService } from '../../../src/pos/pos.service';
+import {
+  AddProductUnitDto,
+  CreateProductDto,
+} from '../../../src/pos/dto/pos.dto';
+import { UnitName } from '../../../src/pos/enums/unit.enum';
+
+type MockPosService = Record<keyof PosService, jest.Mock>;
 
 describe('PosController', () => {
   let controller: PosController;
-  let service: PosService;
+  let service: MockPosService;
 
   beforeEach(async () => {
+    service = {
+      getAllProducts: jest.fn().mockResolvedValue([]),
+      getProductById: jest.fn().mockResolvedValue({ id: 1 }),
+      createProduct: jest.fn().mockResolvedValue({ id: 1 }),
+      updateProduct: jest.fn().mockResolvedValue({ id: 1 }),
+      deleteProduct: jest.fn().mockResolvedValue({ message: 'Deleted' }),
+      getProductUnitById: jest.fn().mockResolvedValue({ id: 1 }),
+      createProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
+      updateProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
+      deleteProductUnit: jest
+        .fn()
+        .mockResolvedValue({ message: 'Unit deleted' }),
+      seedProducts: jest.fn().mockResolvedValue({ message: 'Seeded' }),
+      receiveGoods: jest.fn().mockResolvedValue({ message: 'Received' }),
+      checkout: jest.fn().mockResolvedValue({ message: 'Checkout' }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PosController],
       providers: [
         {
           provide: PosService,
-          useValue: {
-            getAllProducts: jest.fn().mockResolvedValue([]),
-            getProductById: jest.fn().mockResolvedValue({ id: 1 }),
-            createProduct: jest.fn().mockResolvedValue({ id: 1 }),
-            updateProduct: jest.fn().mockResolvedValue({ id: 1 }),
-            deleteProduct: jest.fn().mockResolvedValue({ message: 'Deleted' }),
-            getProductUnitById: jest.fn().mockResolvedValue({ id: 1 }),
-            createProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
-            updateProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
-            deleteProductUnit: jest
-              .fn()
-              .mockResolvedValue({ message: 'Unit deleted' }),
-            seedProducts: jest.fn().mockResolvedValue({ message: 'Seeded' }),
-            receiveGoods: jest.fn().mockResolvedValue({ message: 'Received' }),
-            checkout: jest.fn().mockResolvedValue({ message: 'Checkout' }),
-          },
+          useValue: service,
         },
       ],
     }).compile();
 
     controller = module.get<PosController>(PosController);
-    service = module.get<PosService>(PosService);
   });
 
   it('should be defined', () => {
@@ -53,8 +61,23 @@ describe('PosController', () => {
   });
 
   it('should call createProduct', async () => {
-    const res = await controller.createProduct({ sku: '123' } as any);
-    expect(service.createProduct).toHaveBeenCalledWith({ sku: '123' });
+    const dto: CreateProductDto = {
+      sku: '123',
+      name: 'Test product',
+      baseUnitName: UnitName.BOTTLE,
+      costPrice: 10,
+      units: [
+        {
+          barcode: '8850001',
+          unitName: UnitName.BOTTLE,
+          multiplier: 1,
+          retailPrice: 15,
+          wholesalePrice: 14,
+        },
+      ],
+    };
+    const res = await controller.createProduct(dto);
+    expect(service.createProduct).toHaveBeenCalledWith(dto);
     expect(res).toEqual({ id: 1 });
   });
 
@@ -77,7 +100,14 @@ describe('PosController', () => {
   });
 
   it('should call createProductUnit', async () => {
-    const dto = { productId: 1, barcode: '8850001' } as any;
+    const dto: AddProductUnitDto = {
+      productId: 1,
+      barcode: '8850001',
+      unitName: UnitName.BOTTLE,
+      multiplier: 1,
+      retailPrice: 15,
+      wholesalePrice: 14,
+    };
     const res = await controller.createProductUnit(dto);
     expect(service.createProductUnit).toHaveBeenCalledWith(dto);
     expect(res).toEqual({ id: 1 });

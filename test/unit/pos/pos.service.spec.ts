@@ -9,7 +9,6 @@ import { UnitName } from '../../../src/pos/enums/unit.enum';
 
 describe('PosService', () => {
   let service: PosService;
-  let dataSource: DataSource;
 
   const mockQueryRunner = {
     connect: jest.fn(),
@@ -37,14 +36,18 @@ describe('PosService', () => {
           useValue: {
             find: jest.fn().mockResolvedValue([]),
             count: jest.fn().mockResolvedValue(0),
-            create: jest.fn().mockImplementation((dto) => dto),
+            create: jest
+              .fn()
+              .mockImplementation((dto: Partial<Product>) => dto),
             findOne: jest.fn(),
           },
         },
         {
           provide: getRepositoryToken(ProductUnit),
           useValue: {
-            create: jest.fn().mockImplementation((dto) => dto),
+            create: jest
+              .fn()
+              .mockImplementation((dto: Partial<ProductUnit>) => dto),
             findOne: jest.fn(),
             save: jest.fn(),
           },
@@ -52,7 +55,9 @@ describe('PosService', () => {
         {
           provide: getRepositoryToken(Inventory),
           useValue: {
-            create: jest.fn().mockImplementation((dto) => dto),
+            create: jest
+              .fn()
+              .mockImplementation((dto: Partial<Inventory>) => dto),
           },
         },
         {
@@ -65,7 +70,6 @@ describe('PosService', () => {
     }).compile();
 
     service = module.get<PosService>(PosService);
-    dataSource = module.get<DataSource>(DataSource);
     unitRepo = module.get(getRepositoryToken(ProductUnit));
     productRepo = module.get(getRepositoryToken(Product));
   });
