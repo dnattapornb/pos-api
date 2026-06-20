@@ -1,0 +1,143 @@
+### POS REST API — Product & Inventory
+### For VS Code "REST Client" extension (humao.rest-client).
+### Click "Send Request" above each request. Edit @baseUrl if your PORT differs.
+### Schema: .agents/specs/database.md  |  Docs: .agents/references/pos-api.md
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+###############################################################################
+# Products
+###############################################################################
+
+### Seed sample data (DESTRUCTIVE: truncates POS tables, dev only)
+POST {{baseUrl}}/pos/seed
+
+### List all published products (with units + inventory)
+# @name listProducts
+GET {{baseUrl}}/pos/products
+
+### Get one product by id
+GET {{baseUrl}}/pos/product/1
+
+### Create a product with units
+# @name createProduct
+POST {{baseUrl}}/pos/product
+Content-Type: {{contentType}}
+
+{
+  "sku": "SKU-100",
+  "name": "ขนมปังโฮลวีท",
+  "baseUnitName": "PIECE",
+  "costPrice": 18.5,
+  "units": [
+    { "barcode": "8851000", "unitName": "PIECE", "multiplier": 1, "retailPrice": 25, "wholesalePrice": 22 },
+    { "barcode": "8851001", "unitName": "PACK", "multiplier": 6, "retailPrice": 140, "wholesalePrice": 130 }
+  ]
+}
+
+### Update product — name + cost only (partial)
+PUT {{baseUrl}}/pos/product/1
+Content-Type: {{contentType}}
+
+{
+  "name": "น้ำอัดลม (สูตรใหม่)",
+  "costPrice": 13
+}
+
+### Update product — replace the entire unit list (delete + recreate)
+PUT {{baseUrl}}/pos/product/1
+Content-Type: {{contentType}}
+
+{
+  "units": [
+    { "barcode": "8850001", "unitName": "BOTTLE", "multiplier": 1, "retailPrice": 16, "wholesalePrice": 15 }
+  ]
+}
+
+### Update product — republish / unpublish
+PUT {{baseUrl}}/pos/product/1
+Content-Type: {{contentType}}
+
+{
+  "published": true
+}
+
+### Soft-delete a product (sets published = false)
+DELETE {{baseUrl}}/pos/product/1
+
+###############################################################################
+# Validation checks (expect 400 Bad Request)
+###############################################################################
+
+### Invalid enum + empty units -> 400
+POST {{baseUrl}}/pos/product
+Content-Type: {{contentType}}
+
+{
+  "sku": "SKU-BAD",
+  "name": "bad product",
+  "baseUnitName": "INVALID_UNIT",
+  "costPrice": -5,
+  "units": []
+}
+
+### Unknown field (forbidNonWhitelisted) -> 400
+POST {{baseUrl}}/pos/product
+Content-Type: {{contentType}}
+
+{
+  "sku": "SKU-101",
+  "name": "ok",
+  "baseUnitName": "PIECE",
+  "costPrice": 10,
+  "units": [
+    { "barcode": "8851002", "unitName": "PIECE", "multiplier": 1, "retailPrice": 10, "wholesalePrice": 9 }
+  ],
+  "unexpectedField": "should be rejected"
+}
+
+###############################################################################
+# Inventory
+###############################################################################
+
+### Receive goods (stock IN) — qty * multiplier added to base units
+POST {{baseUrl}}/pos/inventory/receive
+Content-Type: {{contentType}}
+
+{
+  "barcode": "8850003",
+  "qty": 2
+}
+
+### Checkout (stock OUT) — runs in one transaction
+POST {{baseUrl}}/pos/checkout
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "8850001", "qty": 3 },
+    { "barcode": "8850004", "qty": 5 }
+  ],
+  "referenceId": "POS-TERMINAL-1-0001"
+}
+
+### Checkout without referenceId (server generates ORDER-<timestamp>)
+POST {{baseUrl}}/pos/checkout
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "8850001", "qty": 1 }
+  ]
+}
+
+### Checkout unknown barcode -> 400
+POST {{baseUrl}}/pos/checkout
+Content-Type: {{contentType}}
+
+{
+  "items": [
+    { "barcode": "0000000", "qty": 1 }
+  ]
+}
