@@ -26,6 +26,7 @@ Do not guess. Read the specific file when doing related work:
 - **POS REST API (Product & Inventory endpoints, curl/test):** `.agents/references/pos-api.md`
 - **Naming Conventions:** `.agents/references/naming-conventions.md`
 - **Git Commit Rules:** `.agents/skills/git-conventional-commit-message/SKILL.md`
+- **Unit Test Patterns (lint-safe Jest/NestJS mocking):** `.agents/skills/nestjs-unit-test/SKILL.md`
 - **Frontend Integration:** `../pos-ui/MASTER_AGENT_PROMPT.md`
 - **Current Tasks:** ALWAYS check the latest dated folder under `.agents/specs/tasks/*/tasks.md` for the active phase.
 
