@@ -2,10 +2,13 @@ import { Product } from '../../../../src/pos/entities/product.entity';
 import { UnitName } from '../../../../src/pos/enums/unit.enum';
 
 /**
- * Timezone policy guard (task 2026.06.20.002):
- * `created_at` / `updated_at` are stored and returned as UTC. When an entity is
- * serialized to JSON (as NestJS does for responses), the Date columns must emit
- * ISO 8601 UTC strings ending in `Z` with NO local (+07) offset applied.
+ * Timezone policy guard:
+ * `created_at` / `updated_at` are stored as Asia/Bangkok (+07) Thai local time
+ * in MySQL, and the TypeORM `mysql2` driver is pinned to `timezone: '+07:00'`
+ * so the `Date` it produces represents the correct instant. When that entity is
+ * serialized to JSON (as NestJS does for responses), the `Date` columns emit a
+ * canonical ISO 8601 instant string ending in `Z` (via `Date.toISOString()`).
+ * The client converts that instant to +07 for display.
  */
 describe('Product entity timezone serialization', () => {
   const buildProduct = (createdAt: Date, updatedAt: Date): Product => {
@@ -21,8 +24,8 @@ describe('Product entity timezone serialization', () => {
     return product;
   };
 
-  it('serializes createdAt / updatedAt as UTC ISO 8601 strings (no offset)', () => {
-    // A known UTC instant: 2026-06-20T07:00:00.000Z
+  it('serializes createdAt / updatedAt as a canonical ISO 8601 instant (ends in Z)', () => {
+    // The instant for a record created at Thai 2026-06-20 14:00:00 (+07).
     const instant = new Date(Date.UTC(2026, 5, 20, 7, 0, 0, 0));
     const product = buildProduct(instant, instant);
 
@@ -35,7 +38,7 @@ describe('Product entity timezone serialization', () => {
     expect(serialized.updatedAt).toBe('2026-06-20T07:00:00.000Z');
   });
 
-  it('always ends with Z and applies no Asia/Bangkok (+07) skew', () => {
+  it('serializes the exact instant with no double-offset skew', () => {
     const instant = new Date(Date.UTC(2026, 5, 20, 23, 30, 0, 0));
     const product = buildProduct(instant, instant);
 
@@ -44,9 +47,9 @@ describe('Product entity timezone serialization', () => {
     };
 
     expect(createdAt.endsWith('Z')).toBe(true);
-    // The serialized value must equal the raw UTC instant, not +07 (which would
-    // wrongly roll over to the next day at 06:30).
+    // The serialized value must equal the raw instant. Because the driver
+    // timezone (+07) matches the MySQL server timezone (+07), no extra offset
+    // is applied on top of the stored Thai wall-clock value.
     expect(createdAt).toBe(instant.toISOString());
-    expect(createdAt).not.toBe('2026-06-21T06:30:00.000Z');
   });
 });

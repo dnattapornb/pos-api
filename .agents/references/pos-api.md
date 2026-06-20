@@ -12,7 +12,7 @@
 - Global `ValidationPipe` is enabled with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`.
   - Unknown fields in the body → **400 Bad Request**.
   - Type/rule violations → **400 Bad Request** with a `message[]` array describing each failure.
-- **Timezone:** `createdAt` / `updatedAt` in responses are **UTC** ISO 8601 strings ending in `Z` (e.g. `2026-06-20T07:00:00.000Z`). The client is responsible for converting to Asia/Bangkok (+07) for display. See the Timezone Policy in `.agents/specs/database.md`.
+- **Timezone:** `DATETIME` columns are stored as Asia/Bangkok (+07) Thai local time (MySQL `--default-time-zone=+07:00`, TypeORM driver `timezone: '+07:00'`). `createdAt` / `updatedAt` in responses are serialized by NestJS via `toISOString()`, so they are canonical ISO 8601 instant strings ending in `Z` (e.g. a record created at Thai `2026-06-20 14:00:00` returns `2026-06-20T07:00:00.000Z`). The client converts that instant to Asia/Bangkok (+07) for display. See the Timezone Policy in `.agents/specs/database.md`.
 
 Set a shell variable to reuse:
 

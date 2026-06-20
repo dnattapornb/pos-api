@@ -27,9 +27,11 @@ import { InventoryTransaction } from './pos/entities/inventory-transaction.entit
         username: cfg.get<string>('MYSQL_USER', 'root'),
         password: cfg.get<string>('MYSQL_PASSWORD', 'root'),
         database: cfg.get<string>('MYSQL_DATABASE', 'pos'),
-        // Read/write DATETIME as UTC. Prevents the mysql2 driver from applying a
-        // local (+07) offset, keeping timestamps consistent end-to-end.
-        timezone: 'Z',
+        // Store/read DATETIME as Asia/Bangkok (+07) Thai local time. This must
+        // match the MySQL server's --default-time-zone=+07:00 so the mysql2
+        // driver maps the Thai wall-clock value to the correct instant and the
+        // DB value and API value never skew.
+        timezone: '+07:00',
         entities: [
           Receipt,
           ReceiptItem,

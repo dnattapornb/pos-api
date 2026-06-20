@@ -12,21 +12,25 @@ properties are `camelCase` and mapped to columns via `@Column({ name: '...' })`.
 ## Timezone Policy
 
 All `DATETIME` columns (including every `created_at` / `updated_at`) are **stored
-and returned as UTC**. Clients are responsible for converting to local time
-(Asia/Bangkok, +07) for display.
+as Asia/Bangkok (+07) Thai local time**. The wall-clock value persisted in MySQL
+is Thai time, so querying the DB directly shows Thai time.
 
-This is enforced at two layers so the DB value and the API value never skew:
+This is aligned at two layers so the DB value and the API value never skew:
 
-- **App / driver:** TypeORM `mysql` config sets `timezone: 'Z'`
-  (`src/app.module.ts`), so the `mysql2` driver reads/writes `DATETIME` as UTC
-  without applying a local offset.
-- **MySQL server:** the container runs with `--default-time-zone=+00:00`
+- **App / driver:** TypeORM `mysql` config sets `timezone: '+07:00'`
+  (`src/app.module.ts`), so the `mysql2` driver reads/writes `DATETIME` as
+  Asia/Bangkok (+07) and maps the stored wall-clock value to the correct instant.
+- **MySQL server:** the container runs with `--default-time-zone=+07:00`
   (`docker-compose.yml`), so `CURRENT_TIMESTAMP` used by `@CreateDateColumn` /
-  `@UpdateDateColumn` is always UTC regardless of host TZ. Verify with
-  `SELECT @@global.time_zone, @@session.time_zone;` → both `+00:00`.
+  `@UpdateDateColumn` is Thai local time regardless of host TZ. Verify with
+  `SELECT @@global.time_zone, @@session.time_zone;` → both `+07:00`.
 
-API responses serialize these columns as ISO 8601 UTC strings ending in `Z`
-(e.g. `2026-06-20T07:00:00.000Z`).
+Because the driver timezone (`+07:00`) matches the server timezone (`+07:00`),
+the `Date` returned by the ORM represents the correct instant. NestJS serializes
+`Date` via `toISOString()`, so API responses still emit a canonical ISO 8601
+instant ending in `Z` (e.g. a record created at Thai `2026-06-20 14:00:00`
+serializes as `2026-06-20T07:00:00.000Z`). The frontend converts that instant
+back to Asia/Bangkok (+07) for display.
 
 ## Entity Relationship Overview
 
