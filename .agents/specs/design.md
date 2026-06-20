@@ -33,3 +33,16 @@
 - **Centralized Testing:** All tests must be located in `test/unit/` mirroring the `src/` directory structure.
 - **Mocking:** Mock all external dependencies (Google Vision, Gemini API, LINE SDK, TypeORM).
 - **Test Coverage:** Every service and controller method must be covered, especially edge cases (missing API keys, LINE signature mismatch, OCR failure).
+
+## 7. POS & Inventory Architecture
+- **Core Concept:** Single Source of Truth for inventory. All stock operations (receiving, selling) must be converted to the `base_unit` using a `multiplier`.
+- **Database Schema (MySQL):**
+  - Table `products`: `id`, `sku`, `name`, `base_unit_name`, `cost_price`.
+  - Table `product_units`: `id`, `product_id`, `barcode` (Indexed), `unit_name`, `multiplier`, `retail_price`, `wholesale_price`. Maps multiple barcodes to a single product.
+  - Table `inventory`: `product_id`, `qty_in_base_unit`.
+  - Table `inventory_transactions` (Ledger): `id`, `product_id`, `type` (IN/OUT), `qty`, `reference_id`, `timestamp`. Essential for auditing and preventing untraceable stock drift.
+- **Caching Strategy (Redis):**
+  - **Barcode Lookup:** Cache barcode resolutions to ensure millisecond response times on the POS terminal. Key: `pos:barcode:{barcode}` -> Value: JSON of `product_unit` + `product` info.
+- **Transaction Safety (NestJS):**
+  - Stock deductions during checkout MUST be wrapped in TypeORM `@Transaction()` or QueryRunners.
+  - Use row-level locking (`SELECT ... FOR UPDATE`) or atomic updates (`UPDATE inventory SET qty = qty - X WHERE id = Y AND qty >= X`) to prevent race conditions during concurrent sales.
