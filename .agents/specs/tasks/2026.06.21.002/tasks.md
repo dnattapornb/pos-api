@@ -49,12 +49,12 @@
 
 ## R2.5 — Documentation & HTTP Client
 
-- [ ] อัปเดตสคริปต์ `http/pos.http` ทดสอบการทำงานของทุก Endpoint 
-- [ ] อัปเดตเอกสาร `.agents/references/pos-api.md` ให้เป็นปัจจุบัน อธิบาย payload และ response ที่เปลี่ยนไป
+- [x] อัปเดตสคริปต์ `http/pos.http` ทดสอบการทำงานของทุก Endpoint 
+- [x] อัปเดตเอกสาร `.agents/references/pos-api.md` ให้เป็นปัจจุบัน อธิบาย payload และ response ที่เปลี่ยนไป
 
 ## R2.6 — Verification
 
-- [ ] รัน `npm run build` ตรวจสอบ Type Safety
-- [ ] รัน `npx jest` เพื่อยืนยันว่า Unit Test ทั้งหมด 100% Passes
-- [ ] รัน lint สำหรับไฟล์ที่เปลี่ยนแปลง
-- [ ] สร้าง commit message ตามข้อกำหนด
+- [x] รัน `npm run build` ตรวจสอบ Type Safety
+- [x] รัน `npx jest` เพื่อยืนยันว่า Unit Test ทั้งหมด 100% Passes
+- [x] รัน lint สำหรับไฟล์ที่เปลี่ยนแปลง
+- [x] สร้าง commit message ตามข้อกำหนด
