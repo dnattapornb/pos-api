@@ -15,6 +15,13 @@ import { ProductUnit } from './pos/entities/product-unit.entity';
 import { Inventory } from './pos/entities/inventory.entity';
 import { InventoryTransaction } from './pos/entities/inventory-transaction.entity';
 
+import { Category } from './pos/entities/category.entity';
+import { Order } from './pos/entities/order.entity';
+import { OrderItem } from './pos/entities/order-item.entity';
+import { Supplier } from './pos/entities/supplier.entity';
+import { PurchaseOrder } from './pos/entities/purchase-order.entity';
+import { User } from './users/entities/user.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -39,6 +46,12 @@ import { InventoryTransaction } from './pos/entities/inventory-transaction.entit
           ProductUnit,
           Inventory,
           InventoryTransaction,
+          Category,
+          Order,
+          OrderItem,
+          Supplier,
+          PurchaseOrder,
+          User,
         ],
         synchronize: true, // Only for development
       }),

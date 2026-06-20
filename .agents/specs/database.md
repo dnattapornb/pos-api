@@ -37,9 +37,16 @@ back to Asia/Bangkok (+07) for display.
 ```text
 receipt 1 ──< receipt_item                 (OCR receipts)
 
+category 1 ──< product                     (Category group products)
 product 1 ──< product_unit                 (POS: one product, many sellable units/barcodes)
 product 1 ──1 inventory                     (current stock, in base unit)
 product 1 ──< inventory_transaction         (immutable stock ledger: IN / OUT)
+
+user 1 ──< order                           (Cashier process orders)
+order 1 ──< order_item                     (Sales details)
+order_item >──1 product_unit                (Item sold)
+
+supplier 1 ──< purchase_order              (Vendor for purchasing)
 ```
 
 ---
@@ -57,11 +64,12 @@ Source: `src/pos/entities/product.entity.ts`
 | `name` | VARCHAR | NOT NULL | Display name (Thai allowed) |
 | `base_unit_name` | ENUM(`UnitName`) | NOT NULL | Smallest stock unit (multiplier = 1) |
 | `cost_price` | DECIMAL(10,2) | DEFAULT 0 | Cost per base unit |
+| `category_id` | INT | FK → `category.id`, NULLABLE | Reference to category |
 | `published` | BOOLEAN | DEFAULT true | Soft-delete flag (false = deleted) |
 | `created_at` | DATETIME(6) | auto | |
 | `updated_at` | DATETIME(6) | auto | |
 
-Relations: `OneToMany` → `product_unit` (cascade); `OneToOne` → `inventory` (cascade).
+Relations: `OneToMany` → `product_unit` (cascade); `OneToOne` → `inventory` (cascade); `ManyToOne` → `category`.
 
 ### Table `product_unit`
 
@@ -122,6 +130,106 @@ always traceable.
 Source: `src/pos/enums/unit.enum.ts`
 
 `PIECE`, `SACHET`, `BOTTLE`, `CAN`, `CUP`, `BOX`, `PACK`, `DOZEN`, `CARTON`, `CRATE`
+
+### Table `category`
+
+Source: `src/pos/entities/category.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `name` | VARCHAR | UNIQUE, NOT NULL | e.g. Drinks, Snacks |
+| `created_at` | DATETIME(6) | auto | |
+| `updated_at` | DATETIME(6) | auto | |
+
+Relations: `OneToMany` → `product`.
+
+---
+
+## Users Domain
+
+### Table `user`
+
+Source: `src/users/entities/user.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `username` | VARCHAR | UNIQUE, NOT NULL | Login name |
+| `password_hash` | VARCHAR | NOT NULL | Hashed password |
+| `role` | ENUM(`ADMIN`, `CASHIER`) | DEFAULT `CASHIER` | `Role` |
+| `created_at` | DATETIME(6) | auto | |
+| `updated_at` | DATETIME(6) | auto | |
+
+---
+
+## Sales & Orders Domain
+
+### Table `order`
+
+Source: `src/pos/entities/order.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `order_no` | VARCHAR | UNIQUE, NOT NULL | e.g. INV-20260620-001 |
+| `total_amount` | DECIMAL(10,2) | DEFAULT 0 | Sum of items |
+| `discount_amount` | DECIMAL(10,2) | DEFAULT 0 | Discount |
+| `net_amount` | DECIMAL(10,2) | DEFAULT 0 | Total after discount |
+| `payment_method` | ENUM(`CASH`, `PROMPTPAY`) | NOT NULL | `PaymentMethod` |
+| `payment_status` | ENUM(`PENDING`, `COMPLETED`, `CANCELLED`) | DEFAULT `PENDING` | `OrderStatus` |
+| `cashier_id` | INT | FK → `user.id`, NULLABLE | Cashier who processed the order |
+| `created_at` | DATETIME(6) | auto | |
+| `updated_at` | DATETIME(6) | auto | |
+
+Relations: `OneToMany` → `order_item` (cascade); `ManyToOne` → `user`.
+
+### Table `order_item`
+
+Source: `src/pos/entities/order-item.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `order_id` | INT | FK → `order.id`, ON DELETE CASCADE | |
+| `product_unit_id` | INT | FK → `product_unit.id` | The specific unit sold |
+| `qty` | INT | NOT NULL | |
+| `unit_price` | DECIMAL(10,2) | DEFAULT 0 | Snapshot of unit price |
+| `subtotal` | DECIMAL(10,2) | DEFAULT 0 | qty * unit_price |
+
+Relations: `ManyToOne` → `order`; `ManyToOne` → `product_unit`.
+
+---
+
+## Purchase & Supplier Domain
+
+### Table `supplier`
+
+Source: `src/pos/entities/supplier.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `name` | VARCHAR | NOT NULL | Supplier / vendor name |
+| `contact_info` | VARCHAR | NULLABLE | Details |
+| `created_at` | DATETIME(6) | auto | |
+| `updated_at` | DATETIME(6) | auto | |
+
+### Table `purchase_order`
+
+Source: `src/pos/entities/purchase-order.entity.ts`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INT | PK, auto-increment | |
+| `po_no` | VARCHAR | UNIQUE, NOT NULL | Purchase document number |
+| `supplier_id` | INT | FK → `supplier.id`, NULLABLE | |
+| `total_amount` | DECIMAL(10,2) | DEFAULT 0 | |
+| `status` | ENUM(`PENDING`, `COMPLETED`, `CANCELLED`) | DEFAULT `PENDING` | `PurchaseOrderStatus` |
+| `created_at` | DATETIME(6) | auto | |
+| `updated_at` | DATETIME(6) | auto | |
+
+Relations: `ManyToOne` → `supplier`.
 
 ---
 

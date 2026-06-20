@@ -4,12 +4,15 @@ import {
   PrimaryGeneratedColumn,
   OneToMany,
   OneToOne,
+  ManyToOne,
+  JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UnitName } from '../enums/unit.enum';
 import { ProductUnit } from './product-unit.entity';
 import { Inventory } from './inventory.entity';
+import { Category } from './category.entity';
 
 @Entity()
 export class Product {
@@ -40,6 +43,13 @@ export class Product {
     cascade: true,
   })
   inventory: Inventory;
+
+  @Column({ name: 'category_id', nullable: true })
+  categoryId: number;
+
+  @ManyToOne(() => Category, (category) => category.products)
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
 
   @Column({ default: true })
   published: boolean;
