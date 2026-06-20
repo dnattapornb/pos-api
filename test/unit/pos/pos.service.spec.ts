@@ -195,22 +195,119 @@ describe('PosService', () => {
     });
   });
 
-  describe('deleteProductUnit', () => {
-    it('soft deletes a unit by barcode', async () => {
-      const unit = { id: 1, barcode: '8850001', published: true };
+  describe('getProductUnitById', () => {
+    it('returns a published unit by id', async () => {
+      const unit = { id: 10, barcode: '8850001', published: true };
       unitRepo.findOne.mockResolvedValueOnce(unit);
 
-      const res = await service.deleteProductUnit('8850001');
+      const res = await service.getProductUnitById(10);
+
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 10, published: true },
+        relations: { product: true },
+      });
+      expect(res).toBe(unit);
+    });
+
+    it('throws when the unit is not found', async () => {
+      unitRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(service.getProductUnitById(999)).rejects.toThrow(
+        'Product unit not found',
+      );
+    });
+  });
+
+  describe('createProductUnit', () => {
+    it('creates a unit under an existing product', async () => {
+      const product = { id: 1 };
+      const created = { id: 20, barcode: '9990000', published: true };
+      productRepo.findOne.mockResolvedValueOnce(product);
+      unitRepo.save.mockResolvedValueOnce({ id: 20 });
+      // getProductUnitById call after save
+      unitRepo.findOne.mockResolvedValueOnce(created);
+
+      const res = await service.createProductUnit({
+        productId: 1,
+        barcode: '9990000',
+        unitName: UnitName.PACK,
+        multiplier: 6,
+        retailPrice: 85,
+        wholesalePrice: 80,
+      });
+
+      expect(productRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ product, barcode: '9990000', multiplier: 6 }),
+      );
+      expect(unitRepo.save).toHaveBeenCalled();
+      expect(res).toBe(created);
+    });
+
+    it('throws when the product does not exist', async () => {
+      productRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.createProductUnit({
+          productId: 999,
+          barcode: '9990000',
+          unitName: UnitName.PACK,
+          multiplier: 6,
+          retailPrice: 85,
+          wholesalePrice: 80,
+        }),
+      ).rejects.toThrow('Product not found');
+      expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateProductUnit', () => {
+    it('updates only the provided fields', async () => {
+      const unit = {
+        id: 10,
+        barcode: '8850001',
+        unitName: UnitName.BOTTLE,
+        multiplier: 1,
+        retailPrice: 15,
+        wholesalePrice: 14,
+        published: true,
+      };
+      unitRepo.findOne.mockResolvedValueOnce(unit);
+
+      const res = await service.updateProductUnit(10, { retailPrice: 16 });
+
+      expect(unit.retailPrice).toBe(16);
+      expect(unit.wholesalePrice).toBe(14);
+      expect(unitRepo.save).toHaveBeenCalledWith(unit);
+      expect(res).toBe(unit);
+    });
+
+    it('throws when the unit is not found', async () => {
+      unitRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateProductUnit(999, { retailPrice: 16 }),
+      ).rejects.toThrow('Product unit not found');
+      expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteProductUnit', () => {
+    it('soft deletes a unit by id', async () => {
+      const unit = { id: 10, barcode: '8850001', published: true };
+      unitRepo.findOne.mockResolvedValueOnce(unit);
+
+      const res = await service.deleteProductUnit(10);
 
       expect(unit.published).toBe(false);
       expect(unitRepo.save).toHaveBeenCalledWith(unit);
-      expect(res.message).toBe('Product unit 8850001 has been deleted');
+      expect(res.message).toBe('Product unit 10 has been deleted');
     });
 
-    it('throws when the barcode is not found', async () => {
+    it('throws when the id is not found', async () => {
       unitRepo.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.deleteProductUnit('does-not-exist')).rejects.toThrow(
+      await expect(service.deleteProductUnit(999)).rejects.toThrow(
         'Product unit not found',
       );
       expect(unitRepo.save).not.toHaveBeenCalled();

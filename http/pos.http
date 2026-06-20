@@ -67,6 +67,39 @@ Content-Type: {{contentType}}
 DELETE {{baseUrl}}/pos/product/1
 
 ###############################################################################
+# Product units (single unit CRUD — :id is product_unit.id)
+###############################################################################
+
+### Get one product unit by id
+GET {{baseUrl}}/pos/product/unit/1
+
+### Create a product unit (productId in body)
+# @name createProductUnit
+POST {{baseUrl}}/pos/product/unit
+Content-Type: {{contentType}}
+
+{
+  "productId": 1,
+  "barcode": "8850099",
+  "unitName": "PACK",
+  "multiplier": 6,
+  "retailPrice": 85,
+  "wholesalePrice": 80
+}
+
+### Update a product unit by id (partial)
+PUT {{baseUrl}}/pos/product/unit/1
+Content-Type: {{contentType}}
+
+{
+  "retailPrice": 16,
+  "wholesalePrice": 15
+}
+
+### Soft-delete a product unit by id (sets published = false)
+DELETE {{baseUrl}}/pos/product/unit/1
+
+###############################################################################
 # Validation checks (expect 400 Bad Request)
 ###############################################################################
 

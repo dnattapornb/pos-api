@@ -18,6 +18,9 @@ describe('PosController', () => {
             createProduct: jest.fn().mockResolvedValue({ id: 1 }),
             updateProduct: jest.fn().mockResolvedValue({ id: 1 }),
             deleteProduct: jest.fn().mockResolvedValue({ message: 'Deleted' }),
+            getProductUnitById: jest.fn().mockResolvedValue({ id: 1 }),
+            createProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
+            updateProductUnit: jest.fn().mockResolvedValue({ id: 1 }),
             deleteProductUnit: jest
               .fn()
               .mockResolvedValue({ message: 'Unit deleted' }),
@@ -67,9 +70,30 @@ describe('PosController', () => {
     expect(res).toEqual({ message: 'Deleted' });
   });
 
+  it('should call getProductUnitById', async () => {
+    const res = await controller.getProductUnitById(1);
+    expect(service.getProductUnitById).toHaveBeenCalledWith(1);
+    expect(res).toEqual({ id: 1 });
+  });
+
+  it('should call createProductUnit', async () => {
+    const dto = { productId: 1, barcode: '8850001' } as any;
+    const res = await controller.createProductUnit(dto);
+    expect(service.createProductUnit).toHaveBeenCalledWith(dto);
+    expect(res).toEqual({ id: 1 });
+  });
+
+  it('should call updateProductUnit', async () => {
+    const res = await controller.updateProductUnit(1, { retailPrice: 16 });
+    expect(service.updateProductUnit).toHaveBeenCalledWith(1, {
+      retailPrice: 16,
+    });
+    expect(res).toEqual({ id: 1 });
+  });
+
   it('should call deleteProductUnit', async () => {
-    const res = await controller.deleteProductUnit('8850001');
-    expect(service.deleteProductUnit).toHaveBeenCalledWith('8850001');
+    const res = await controller.deleteProductUnit(1);
+    expect(service.deleteProductUnit).toHaveBeenCalledWith(1);
     expect(res).toEqual({ message: 'Unit deleted' });
   });
 

@@ -14,6 +14,8 @@ import {
   CheckoutDto,
   CreateProductDto,
   UpdateProductDto,
+  AddProductUnitDto,
+  UpdateProductUnitDto,
 } from './dto/pos.dto';
 
 @Controller('pos')
@@ -23,6 +25,29 @@ export class PosController {
   @Get('products')
   async getAllProducts() {
     return this.posService.getAllProducts();
+  }
+
+  @Get('product/unit/:id')
+  async getProductUnitById(@Param('id', ParseIntPipe) id: number) {
+    return this.posService.getProductUnitById(id);
+  }
+
+  @Post('product/unit')
+  async createProductUnit(@Body() dto: AddProductUnitDto) {
+    return this.posService.createProductUnit(dto);
+  }
+
+  @Put('product/unit/:id')
+  async updateProductUnit(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateProductUnitDto,
+  ) {
+    return this.posService.updateProductUnit(id, dto);
+  }
+
+  @Delete('product/unit/:id')
+  async deleteProductUnit(@Param('id', ParseIntPipe) id: number) {
+    return this.posService.deleteProductUnit(id);
   }
 
   @Get('product/:id')
@@ -46,11 +71,6 @@ export class PosController {
   @Delete('product/:id')
   async deleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.posService.deleteProduct(id);
-  }
-
-  @Delete('unit/:barcode')
-  async deleteProductUnit(@Param('barcode') barcode: string) {
-    return this.posService.deleteProductUnit(barcode);
   }
 
   @Post('seed')

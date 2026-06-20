@@ -13,6 +13,8 @@ import {
   CheckoutDto,
   CreateProductDto,
   UpdateProductDto,
+  AddProductUnitDto,
+  UpdateProductUnitDto,
 } from './dto/pos.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { UnitName } from './enums/unit.enum';
@@ -188,8 +190,64 @@ export class PosService {
     return { message: `Product ${id} has been deleted` };
   }
 
-  async deleteProductUnit(barcode: string) {
-    const unit = await this.unitRepo.findOne({ where: { barcode } });
+  async getProductUnitById(id: number) {
+    const unit = await this.unitRepo.findOne({
+      where: { id, published: true },
+      relations: { product: true },
+    });
+    if (!unit) {
+      throw new BadRequestException('Product unit not found');
+    }
+    return unit;
+  }
+
+  async createProductUnit(dto: AddProductUnitDto) {
+    const product = await this.productRepo.findOne({
+      where: { id: dto.productId },
+    });
+    if (!product) {
+      throw new BadRequestException('Product not found');
+    }
+
+    try {
+      const unit = this.unitRepo.create({
+        product,
+        barcode: dto.barcode,
+        unitName: dto.unitName,
+        multiplier: dto.multiplier,
+        retailPrice: dto.retailPrice,
+        wholesalePrice: dto.wholesalePrice,
+      });
+      await this.unitRepo.save(unit);
+      this.logger.log(`Created product unit ${unit.id}`);
+      return this.getProductUnitById(unit.id);
+    } catch (err) {
+      this.logger.error(`Create product unit failed: ${err}`);
+      throw new BadRequestException('Failed to create product unit');
+    }
+  }
+
+  async updateProductUnit(id: number, dto: UpdateProductUnitDto) {
+    const unit = await this.unitRepo.findOne({ where: { id } });
+    if (!unit) {
+      throw new BadRequestException('Product unit not found');
+    }
+
+    if (dto.barcode) unit.barcode = dto.barcode;
+    if (dto.unitName) unit.unitName = dto.unitName;
+    if (dto.multiplier !== undefined) unit.multiplier = dto.multiplier;
+    if (dto.retailPrice !== undefined) unit.retailPrice = dto.retailPrice;
+    if (dto.wholesalePrice !== undefined)
+      unit.wholesalePrice = dto.wholesalePrice;
+    if (dto.published !== undefined) unit.published = dto.published;
+
+    await this.unitRepo.save(unit);
+    this.logger.log(`Updated product unit ${id}`);
+    return unit;
+  }
+
+  async deleteProductUnit(id: number) {
+    const unit = await this.unitRepo.findOne({ where: { id } });
     if (!unit) {
       throw new BadRequestException('Product unit not found');
     }
@@ -197,8 +255,8 @@ export class PosService {
     unit.published = false;
     await this.unitRepo.save(unit);
 
-    this.logger.log(`Soft deleted product unit ${barcode}`);
-    return { message: `Product unit ${barcode} has been deleted` };
+    this.logger.log(`Soft deleted product unit ${id}`);
+    return { message: `Product unit ${id} has been deleted` };
   }
 
   async seedProducts() {

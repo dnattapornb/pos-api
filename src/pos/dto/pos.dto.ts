@@ -35,6 +35,42 @@ export class CreateProductUnitDto {
   wholesalePrice: number;
 }
 
+export class AddProductUnitDto extends CreateProductUnitDto {
+  @IsNumber()
+  @IsPositive()
+  productId: number;
+}
+
+export class UpdateProductUnitDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  barcode?: string;
+
+  @IsOptional()
+  @IsEnum(UnitName)
+  unitName?: UnitName;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  multiplier?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  retailPrice?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  wholesalePrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  published?: boolean;
+}
+
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
