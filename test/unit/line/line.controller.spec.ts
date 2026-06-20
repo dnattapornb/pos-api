@@ -6,7 +6,6 @@ import * as crypto from 'crypto';
 
 describe('LineController', () => {
   let controller: LineController;
-  let lineService: LineService;
 
   const mockLineService = {
     handleWebhook: jest.fn(),
@@ -29,7 +28,6 @@ describe('LineController', () => {
     }).compile();
 
     controller = module.get<LineController>(LineController);
-    lineService = module.get<LineService>(LineService);
   });
 
   it('should be defined', () => {

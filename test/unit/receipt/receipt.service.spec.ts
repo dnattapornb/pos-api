@@ -13,17 +13,17 @@ describe('ReceiptService', () => {
 
   beforeEach(async () => {
     mockReceiptRepo = {
-      create: jest.fn().mockImplementation((dto) => dto),
+      create: jest.fn().mockImplementation((dto: Partial<Receipt>) => dto),
       save: jest
         .fn()
-        .mockImplementation((entity) =>
+        .mockImplementation((entity: Partial<Receipt>) =>
           Promise.resolve({ ...entity, id: 'rcpt-123' }),
         ),
       findOne: jest.fn(),
     };
 
     mockItemRepo = {
-      create: jest.fn().mockImplementation((dto) => dto),
+      create: jest.fn().mockImplementation((dto: Partial<ReceiptItem>) => dto),
       delete: jest.fn(),
     };
 

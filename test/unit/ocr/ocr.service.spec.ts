@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { OcrService } from '../../../src/ocr/ocr.service';
-import { ImageAnnotatorClient } from '@google-cloud/vision';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Mock dependencies
 jest.mock('@google-cloud/vision', () => ({
@@ -23,12 +21,18 @@ jest.mock('@google/generative-ai', () => {
   };
 });
 
+// Exposes the private members of OcrService used by the tests.
+interface OcrServiceInternal {
+  visionClient: { textDetection: jest.Mock };
+  geminiModel: unknown;
+}
+
 describe('OcrService', () => {
   let service: OcrService;
-  let configService: ConfigService;
-  let mockVisionClient: any;
-  let mockGenAIModel: any;
-  const { mockGenerateContent } = require('@google/generative-ai');
+  let mockVisionClient: { textDetection: jest.Mock };
+  const { mockGenerateContent } = jest.requireMock<{
+    mockGenerateContent: jest.Mock;
+  }>('@google/generative-ai');
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -49,11 +53,9 @@ describe('OcrService', () => {
     }).compile();
 
     service = module.get<OcrService>(OcrService);
-    configService = module.get<ConfigService>(ConfigService);
 
     // Retrieve mocked clients
-    mockVisionClient = (service as any).visionClient;
-    mockGenAIModel = (service as any).geminiModel;
+    mockVisionClient = (service as unknown as OcrServiceInternal).visionClient;
   });
 
   it('should be defined', () => {
@@ -162,7 +164,9 @@ describe('OcrService', () => {
       }).compile();
 
       const serviceWithoutKey = module.get<OcrService>(OcrService);
-      expect((serviceWithoutKey as any).geminiModel).toBeNull();
+      expect(
+        (serviceWithoutKey as unknown as OcrServiceInternal).geminiModel,
+      ).toBeNull();
     });
   });
 });

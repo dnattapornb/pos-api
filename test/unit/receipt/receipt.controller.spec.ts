@@ -6,8 +6,11 @@ import { ReceiptStatus } from '../../../src/receipt/receipt.entity';
 
 describe('ReceiptController', () => {
   let controller: ReceiptController;
-  let mockReceiptService: any;
-  let mockLineService: any;
+  let mockReceiptService: {
+    getReceiptById: jest.Mock;
+    updateReceipt: jest.Mock;
+  };
+  let mockLineService: { sendFinalReceiptMessage: jest.Mock };
 
   beforeEach(async () => {
     mockReceiptService = {

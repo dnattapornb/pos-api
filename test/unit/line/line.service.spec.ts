@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { messagingApi, WebhookEvent } from '@line/bot-sdk';
 import { LineService } from '../../../src/line/line.service';
 import { OcrService } from '../../../src/ocr/ocr.service';
 import { ReceiptService } from '../../../src/receipt/receipt.service';
 import { ConfigService } from '@nestjs/config';
-import { messagingApi } from '@line/bot-sdk';
 import * as FlexBuilder from '../../../src/line/flex.builder';
 
 jest.mock('@line/bot-sdk', () => ({
@@ -18,12 +18,45 @@ jest.mock('@line/bot-sdk', () => ({
   },
 }));
 
+interface MockLineClient {
+  replyMessage: jest.Mock;
+  pushMessage: jest.Mock;
+}
+
+interface MockBlobClient {
+  getMessageContent: jest.Mock;
+}
+
+interface MockOcrService {
+  processReceipt: jest.Mock;
+}
+
+interface MockReceiptService {
+  createReceipt: jest.Mock;
+  getReceiptById: jest.Mock;
+  approveReceipt: jest.Mock;
+  cancelReceipt: jest.Mock;
+}
+
+// Exposes the private members/methods of LineService used by the tests.
+type LineServiceInternal = {
+  lineClient: MockLineClient;
+  lineBlobClient: MockBlobClient;
+  handleImageMessage: (event: unknown) => Promise<void>;
+  handlePostback: (event: unknown) => Promise<void>;
+  safeReplyText: (
+    replyToken: string | undefined,
+    text: string,
+  ) => Promise<void>;
+};
+
 describe('LineService', () => {
   let service: LineService;
-  let mockOcrService: any;
-  let mockReceiptService: any;
-  let mockLineClient: any;
-  let mockBlobClient: any;
+  let internal: LineServiceInternal;
+  let mockOcrService: MockOcrService;
+  let mockReceiptService: MockReceiptService;
+  let mockLineClient: MockLineClient;
+  let mockBlobClient: MockBlobClient;
 
   beforeEach(async () => {
     mockOcrService = {
@@ -52,8 +85,9 @@ describe('LineService', () => {
     }).compile();
 
     service = module.get<LineService>(LineService);
-    mockLineClient = (service as any).lineClient;
-    mockBlobClient = (service as any).lineBlobClient;
+    internal = service as unknown as LineServiceInternal;
+    mockLineClient = internal.lineClient;
+    mockBlobClient = internal.lineBlobClient;
   });
 
   it('should be defined', () => {
@@ -63,18 +97,20 @@ describe('LineService', () => {
   describe('handleWebhook', () => {
     it('should route image messages to handleImageMessage', async () => {
       const spy = jest
-        .spyOn(service as any, 'handleImageMessage')
+        .spyOn(internal, 'handleImageMessage')
         .mockResolvedValue(undefined);
-      const events = [{ type: 'message', message: { type: 'image' } }] as any;
+      const events = [
+        { type: 'message', message: { type: 'image' } },
+      ] as unknown as WebhookEvent[];
       await service.handleWebhook(events);
       expect(spy).toHaveBeenCalledWith(events[0]);
     });
 
     it('should route postback to handlePostback', async () => {
       const spy = jest
-        .spyOn(service as any, 'handlePostback')
+        .spyOn(internal, 'handlePostback')
         .mockResolvedValue(undefined);
-      const events = [{ type: 'postback' }] as any;
+      const events = [{ type: 'postback' }] as unknown as WebhookEvent[];
       await service.handleWebhook(events);
       expect(spy).toHaveBeenCalledWith(events[0]);
     });
@@ -83,14 +119,14 @@ describe('LineService', () => {
   describe('handleImageMessage', () => {
     it('should reject unauthorized users', async () => {
       const spy = jest
-        .spyOn(service as any, 'safeReplyText')
+        .spyOn(internal, 'safeReplyText')
         .mockResolvedValue(undefined);
       const event = {
         source: { userId: 'unauthorized-user' },
         message: { id: 'msg1' },
         replyToken: 'rt1',
       };
-      await (service as any).handleImageMessage(event);
+      await internal.handleImageMessage(event);
       expect(spy).toHaveBeenCalledWith(
         'rt1',
         'ขออภัย คุณไม่มีสิทธิ์ใช้งานบอทนี้',
@@ -109,14 +145,15 @@ describe('LineService', () => {
 
       mockOcrService.processReceipt.mockResolvedValue({ storeName: 'Test' });
       mockReceiptService.createReceipt.mockResolvedValue({
-        receiptId: 'rcpt_123',
+        id: 'rcpt_123',
       });
 
-      jest
-        .spyOn(FlexBuilder, 'buildReceiptFlexMessage')
-        .mockReturnValue({ type: 'flex', altText: 'Test' } as any);
+      jest.spyOn(FlexBuilder, 'buildReceiptFlexMessage').mockReturnValue({
+        type: 'flex',
+        altText: 'Test',
+      } as unknown as messagingApi.FlexMessage);
 
-      await (service as any).handleImageMessage(event);
+      await internal.handleImageMessage(event);
 
       expect(mockOcrService.processReceipt).toHaveBeenCalledWith(
         Buffer.from('chunk1'),
@@ -132,7 +169,7 @@ describe('LineService', () => {
   describe('handlePostback', () => {
     it('should reply error if receipt not pending', async () => {
       const spy = jest
-        .spyOn(service as any, 'safeReplyText')
+        .spyOn(internal, 'safeReplyText')
         .mockResolvedValue(undefined);
       mockReceiptService.getReceiptById.mockResolvedValue({
         status: 'approved',
@@ -142,7 +179,7 @@ describe('LineService', () => {
         postback: { data: 'action=approve&id=rcpt_123' },
         replyToken: 'rt1',
       };
-      await (service as any).handlePostback(event);
+      await internal.handlePostback(event);
 
       expect(spy).toHaveBeenCalledWith(
         'rt1',
@@ -157,15 +194,16 @@ describe('LineService', () => {
       mockReceiptService.approveReceipt.mockResolvedValue({
         status: 'approved',
       });
-      jest
-        .spyOn(FlexBuilder, 'buildFinalReceiptFlexMessage')
-        .mockReturnValue({ type: 'flex', altText: 'Approved' } as any);
+      jest.spyOn(FlexBuilder, 'buildFinalReceiptFlexMessage').mockReturnValue({
+        type: 'flex',
+        altText: 'Approved',
+      } as unknown as messagingApi.FlexMessage);
 
       const event = {
         postback: { data: 'action=approve&id=rcpt_123' },
         replyToken: 'rt1',
       };
-      await (service as any).handlePostback(event);
+      await internal.handlePostback(event);
 
       expect(mockReceiptService.approveReceipt).toHaveBeenCalledWith(
         'rcpt_123',
@@ -180,15 +218,16 @@ describe('LineService', () => {
       mockReceiptService.cancelReceipt.mockResolvedValue({
         status: 'cancelled',
       });
-      jest
-        .spyOn(FlexBuilder, 'buildFinalReceiptFlexMessage')
-        .mockReturnValue({ type: 'flex', altText: 'Cancelled' } as any);
+      jest.spyOn(FlexBuilder, 'buildFinalReceiptFlexMessage').mockReturnValue({
+        type: 'flex',
+        altText: 'Cancelled',
+      } as unknown as messagingApi.FlexMessage);
 
       const event = {
         postback: { data: 'action=cancel&id=rcpt_123' },
         replyToken: 'rt1',
       };
-      await (service as any).handlePostback(event);
+      await internal.handlePostback(event);
 
       expect(mockReceiptService.cancelReceipt).toHaveBeenCalledWith('rcpt_123');
       expect(mockLineClient.replyMessage).toHaveBeenCalled();
@@ -198,9 +237,7 @@ describe('LineService', () => {
   describe('safeReplyText', () => {
     it('should send text and handle error gracefully', async () => {
       mockLineClient.replyMessage.mockRejectedValue(new Error('Network error'));
-      await expect(
-        (service as any).safeReplyText('rt1', 'msg'),
-      ).resolves.not.toThrow();
+      await expect(internal.safeReplyText('rt1', 'msg')).resolves.not.toThrow();
     });
   });
 });
